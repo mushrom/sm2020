@@ -1,0 +1,578 @@
+{
+    "map": {
+        "file": ".//meh.map"
+    },
+    "root": {
+        "nodes": {
+            "bullets": {
+                "nodes": null,
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "gameObject"
+            },
+            "directional light E86": {
+                "casts_shadows": false,
+                "diffuse": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "intensity": 50.0,
+                "is_static": true,
+                "nodes": null,
+                "position": [
+                    -10.0,
+                    0.0,
+                    -1.100000023841858
+                ],
+                "rotation": [
+                    0.6757910847663879,
+                    0.0,
+                    0.0,
+                    -0.7370932102203369
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "Directional light"
+            },
+            "enemies": {
+                "nodes": null,
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "gameObject"
+            },
+            "keyObjs": {
+                "nodes": null,
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "gameObject"
+            },
+            "object E216": {
+                "nodes": {
+                    "import[219]": {
+                        "position": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "rotation": [
+                            1.0,
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "sourceFile": "./assets//transport-thing.gltf",
+                        "type": "Imported file"
+                    }
+                },
+                "position": [
+                    -0.10000000149011612,
+                    -3.0763731002807617,
+                    1.7519774436950684
+                ],
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.5,
+                    1.0,
+                    1.5
+                ],
+                "type": "gameObject"
+            },
+            "object E72": {
+                "nodes": {
+                    "import[77]": {
+                        "position": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "rotation": [
+                            1.0,
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "sourceFile": "./assets/loopbase.gltf",
+                        "type": "Imported file"
+                    }
+                },
+                "position": [
+                    0.30000001192092896,
+                    -6.099999904632568,
+                    1.7999999523162842
+                ],
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "gameObject"
+            },
+            "pickups": {
+                "nodes": null,
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "gameObject"
+            },
+            "point light E72": {
+                "casts_shadows": true,
+                "diffuse": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "intensity": 50.0,
+                "is_static": true,
+                "nodes": null,
+                "position": [
+                    -3.1060056686401367,
+                    6.433134078979492,
+                    -5.800000190734863
+                ],
+                "radius": 1.0,
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "Point light"
+            },
+            "point light E87": {
+                "casts_shadows": true,
+                "diffuse": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "intensity": 50.0,
+                "is_static": true,
+                "nodes": null,
+                "position": [
+                    -34.099998474121094,
+                    1.2000000476837158,
+                    28.5
+                ],
+                "radius": 1.6440000534057617,
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "Point light"
+            },
+            "point light E88": {
+                "casts_shadows": true,
+                "diffuse": [
+                    0.7919718027114868,
+                    0.20588237047195435,
+                    1.0,
+                    1.0
+                ],
+                "intensity": 50.0,
+                "is_static": true,
+                "nodes": null,
+                "position": [
+                    -9.199999809265137,
+                    1.425525188446045,
+                    -37.20000076293945
+                ],
+                "radius": 1.0,
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "Point light"
+            },
+            "point light E89": {
+                "casts_shadows": true,
+                "diffuse": [
+                    1.0,
+                    0.11274510622024536,
+                    0.11274510622024536,
+                    1.0
+                ],
+                "intensity": 50.0,
+                "is_static": true,
+                "nodes": null,
+                "position": [
+                    28.700000762939453,
+                    0.0,
+                    30.700000762939453
+                ],
+                "radius": 1.3819999694824219,
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "Point light"
+            },
+            "reflection probe E132": {
+                "is_static": true,
+                "nodes": null,
+                "position": [
+                    -0.30000001192092896,
+                    0.30000001192092896,
+                    0.20000000298023224
+                ],
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "Reflection probe"
+            },
+            "reflection probe E133": {
+                "is_static": true,
+                "nodes": null,
+                "position": [
+                    -34.20000076293945,
+                    0.8999999761581421,
+                    26.299999237060547
+                ],
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "Reflection probe"
+            },
+            "reflection probe E134": {
+                "is_static": true,
+                "nodes": null,
+                "position": [
+                    2.4000000953674316,
+                    -1.0,
+                    44.599998474121094
+                ],
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "Reflection probe"
+            },
+            "reflection probe E135": {
+                "is_static": true,
+                "nodes": null,
+                "position": [
+                    28.200000762939453,
+                    -1.5,
+                    31.100000381469727
+                ],
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "Reflection probe"
+            },
+            "reflection probe E136": {
+                "is_static": true,
+                "nodes": null,
+                "position": [
+                    40.099998474121094,
+                    -0.699999988079071,
+                    2.700000047683716
+                ],
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "Reflection probe"
+            },
+            "reflection probe E137": {
+                "is_static": true,
+                "nodes": null,
+                "position": [
+                    34.20000076293945,
+                    0.10000000149011612,
+                    -24.200000762939453
+                ],
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "Reflection probe"
+            },
+            "reflection probe E138": {
+                "is_static": true,
+                "nodes": null,
+                "position": [
+                    11.300000190734863,
+                    -1.5,
+                    -38.5
+                ],
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "Reflection probe"
+            },
+            "reflection probe E140": {
+                "is_static": true,
+                "nodes": null,
+                "position": [
+                    -21.399999618530273,
+                    -0.8999999761581421,
+                    -36.599998474121094
+                ],
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "Reflection probe"
+            },
+            "reflection probe E141": {
+                "is_static": true,
+                "nodes": null,
+                "position": [
+                    -39.599998474121094,
+                    -1.0,
+                    -17.600000381469727
+                ],
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "Reflection probe"
+            },
+            "reflection probe E142": {
+                "is_static": true,
+                "nodes": null,
+                "position": [
+                    -41.099998474121094,
+                    -1.100000023841858,
+                    3.5999999046325684
+                ],
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "Reflection probe"
+            },
+            "spot light E94": {
+                "angle": 0.7853749990463257,
+                "casts_shadows": false,
+                "diffuse": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "intensity": 50.0,
+                "is_static": true,
+                "nodes": null,
+                "position": [
+                    48.38500213623047,
+                    9.249921798706055,
+                    3.9111509323120117
+                ],
+                "radius": 1.0,
+                "rotation": [
+                    0.7174426913261414,
+                    0.0,
+                    0.0,
+                    -0.6966175436973572
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": "Spot light"
+            }
+        },
+        "position": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "rotation": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "type": "gameObject"
+    }
+}

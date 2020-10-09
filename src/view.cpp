@@ -19,8 +19,6 @@ static float randomComponent(void) {
 }
 
 static glm::vec3 randomPosition(void) {
-	//return glm::vec3(randomComponent(), -3, randomComponent());
-
 	float a = 2*3.1415926*distribution(generator);
 	float x = sin(a);
 	float y = cos(a);
@@ -30,8 +28,10 @@ static glm::vec3 randomPosition(void) {
 	return glm::vec3((45.0 - adjx) * x, -3, (45.0 - adjy) * y);
 }
 
-static channelBuffers_ptr weaponSound =
-	openAudio(GR_PREFIX "assets/sfx/impact.ogg");
+#define MAX_LEVELS 4
+static inline unsigned nextLevel(unsigned n) {
+	return (n + 1) % MAX_LEVELS;
+}
 
 struct nvg_data {
 	int fontNormal, fontBold, fontIcons, fontEmoji;
@@ -46,20 +46,22 @@ testgameView::testgameView(gameMain *game) : gameView() {
 	compile_model("bulletObj", bulletObj);
 	bind_cooked_meshes();
 
-	setNode("bullets", game->state->rootnode, bullets);
-	setNode("enemies", game->state->rootnode, enemies);
-	setNode("pickups", game->state->rootnode, pickups);
-	setNode("keyObjs", game->state->rootnode, keyObjs);
-
-	generateEnemies();
-	generatePickups();
-	generateKeys();
-
 	testpost = makePostprocessor<rOutput>(game->rend->shaders["post"],
 		SCREEN_SIZE_X, SCREEN_SIZE_Y);
 
 	cameraPhysID = game->phys->add_sphere(cameraObj, glm::vec3(0, 2, 0), 1.0, 1.0);
 	setNode("player camera", game->state->physObjects, cameraObj);
+
+	setNode("bullets", game->state->rootnode, bullets);
+	setNode("enemies", game->state->rootnode, enemies);
+	setNode("pickups", game->state->rootnode, pickups);
+	setNode("keyObjs", game->state->rootnode, keyObjs);
+
+	sounds.weapon    = openAudio("assets/phaser.ogg");
+	sounds.pickup    = openAudio("assets/healthpickup.ogg");
+	sounds.nextLevel = openAudio("assets/next.ogg");
+	sounds.damage    = openAudio("assets/oof.ogg");
+	sounds.hit       = openAudio("assets/turrethit.ogg");
 
 	input.bind(modes::MainMenu,
 		[&] (SDL_Event& ev, unsigned flags) {
@@ -142,9 +144,55 @@ testgameView::testgameView(gameMain *game) : gameView() {
 			if (ev.type == SDL_MOUSEBUTTONDOWN
 			    && ev.button.button == SDL_BUTTON_LEFT)
 			{
-				auto sound = openAudio(GR_PREFIX "assets/sfx/impact.ogg");
-				auto ptr = std::make_shared<stereoAudioChannel>(sound);
-				game->audio->add(ptr);
+				if (ammo > 0.15) {
+					float ticks = SDL_GetTicks() / 1000.f;
+
+					auto ptr = std::make_shared<spatialAudioChannel>(sounds.weapon);
+					ptr->worldPosition = cam->position + cam->direction;
+					game->audio->add(ptr);
+
+					gameObject::ptr obj = std::make_shared<gameObject>();
+					glm::vec3 off = glm::normalize(cam->direction)*3.f;
+					obj->transform.position = cam->position;
+					obj->transform.scale = glm::vec3(0.5f);
+					obj->transform.position += off;
+
+					obj->id = game->phys->add_sphere(obj, obj->transform.position, 1.0, 0.5);
+
+					glm::vec3 camvel = game->phys->get_velocity(cameraPhysID);
+					game->phys->set_velocity(obj->id, glm::normalize(cam->direction)*40.f + camvel);
+
+					bulletCreated[obj->id] = ticks;
+
+					std::string name = "bullet" + std::to_string(obj->id);
+					setNode("model", obj, bulletObj);
+					setNode(name, bullets, obj);
+
+					ammo = max(0.f, ammo - 0.15);
+				}
+			}
+
+			return MODAL_NO_CHANGE;
+		});
+
+	// TODO: this could be a function generator
+	input.bind(modes::Move,
+		[&, game] (SDL_Event& ev, unsigned flags) {
+			if (ev.type == SDL_MOUSEBUTTONDOWN
+			    && ev.button.button == SDL_BUTTON_RIGHT)
+			{
+				unsigned next = nextLevel(current_level);
+				if (keysgot == (1 << MAX_LEVELS) - 1) {
+					input.setMode(modes::YouWon);
+				}
+
+				else if (glm::length(cam->position) < 10.f && (keysgot & (1 << next))) {
+					current_level = next;
+					resetLevel(game);
+
+					auto ptr = std::make_shared<stereoAudioChannel>(sounds.nextLevel);
+					game->audio->add(ptr);
+				}
 			}
 
 			return MODAL_NO_CHANGE;
@@ -158,10 +206,15 @@ void testgameView::handleInput(gameMain *game, SDL_Event& ev) {
 }
 
 void testgameView::logic(gameMain *game, float delta) {
-	float ticks = SDL_GetTicks() / 1000.f;
+	if (input.mode == modes::Move && health < 0.02) {
+		input.setMode(modes::GameOver);
+	}
 
 	// TODO: cam->update(delta);
-	if (input.mode == modes::Move) {
+	else if (input.mode == modes::Move) {
+		ammo = min(1.f, ammo + delta*0.15); // 15% ammo every second 
+		health = min(1.f, health + delta*0.02); // recover 2% health every second
+
 		game->phys->set_acceleration(cameraPhysID, cam->velocity);
 		game->phys->step_simulation(1.f/game->frame_timer.last());
 
@@ -172,94 +225,140 @@ void testgameView::logic(gameMain *game, float delta) {
 					atan2(cam->direction.x, cam->direction.z),
 					0));
 
-		for (auto& [name, ptr] : enemies->nodes) {
-			glm::vec3 dir = ptr->transform.position - cam->position;
-			ptr->transform.rotation = glm::quat(glm::vec3(0, atan2(dir.x, dir.z), 0));
+		updateEnemies(game);
+		updateBullets(game);
+		updatePickups(game);
+	}
+}
 
-			/*
-			   auto sub = ptr->getNode("model");
-			   assert(sub != nullptr);
+void testgameView::updateEnemies(gameMain *game) {
+	float ticks = SDL_GetTicks() / 1000.f;
 
-			   for (auto& [_, imported] : sub->nodes) {
-			   auto head = imported->getNode("scene-root[6]");
-			   assert(head != nullptr);
+	for (auto& [name, ptr] : enemies->nodes) {
+		glm::vec3 dir = ptr->transform.position - cam->position;
+		glm::quat rot = glm::quat(glm::vec3(0, atan2(dir.x, dir.z), 0));
+		float height = min(0.5f, max(0.f, 25.f - glm::length(dir))*0.2f);
 
-			   glm::vec3 dir = ptr->transform.position - cam->position;
-			   head->transform.rotation = glm::quat(glm::vec3(0, atan2(dir.x, dir.z), 0));
-			   head->transform.position = glm::vec3(0, 1.f - glm::clamp(0.f, 10.f, glm::distance(ptr->transform.position, cam->position)) / 10.f, 0);
-			   }
-			   */
+		auto head = ptr->getNode("head");
+		assert(head != nullptr);
+		head->transform.rotation = rot;
+		head->transform.position = glm::vec3(0, height, 0);
 
-			if (glm::length(dir) < 20.0 && (ticks - last_shots[ptr->id]) > 1.5f) {
-				std::cerr << "turret " << ptr->id << " shot a bullet!" << std::endl;
-				last_shots[ptr->id] = ticks;
+		if (glm::length(dir) < 20.0 && (ticks - last_shots[ptr->id]) > 1.5f) {
+			std::cout << "turret " << ptr->id << " shot a bullet!" << std::endl;
+			last_shots[ptr->id] = ticks;
 
-				gameObject::ptr obj = std::make_shared<gameObject>();
-				obj->transform = ptr->transform;
-				obj->transform.scale = glm::vec3(0.5f);
-				obj->transform.position += glm::vec3(0, 1.f, 0);
+			gameObject::ptr obj = std::make_shared<gameObject>();
+			obj->transform.position =
+				ptr->transform.position + glm::vec3(0, 2.f, 0);
+			obj->transform.scale = glm::vec3(0.5f);
 
-				obj->id = game->phys->add_sphere(obj, obj->transform.position, 1.0, 0.5);
-				game->phys->set_velocity(obj->id, -glm::normalize(dir)*40.f);
+			glm::vec3 adjdir = obj->transform.position - cam->position;
+			obj->transform.position += -glm::normalize(adjdir)*3.f; 
 
-				bulletCreated[obj->id] = ticks;
+			obj->id = game->phys->add_sphere(obj, obj->transform.position, 1.0, 0.5);
+			game->phys->set_velocity(obj->id, -glm::normalize(adjdir)*40.f);
 
-				std::string name = "bullet" + std::to_string(obj->id);
-				setNode("model", obj, bulletObj);
-				setNode(name, bullets, obj);
-			}
+			bulletCreated[obj->id] = ticks;
+
+			std::string name = "bullet" + std::to_string(obj->id);
+			setNode("model", obj, bulletObj);
+			setNode(name, bullets, obj);
+
+			auto ptr = std::make_shared<spatialAudioChannel>(sounds.weapon);
+			ptr->worldPosition = obj->transform.position;
+			game->audio->add(ptr);
 		}
+	}
+}
 
-		for (auto it = bullets->nodes.begin(); it != bullets->nodes.end();) {
-			auto& [name, ptr] = *it;
-			auto created = bulletCreated.find(ptr->id);
+void testgameView::updateBullets(gameMain *game) {
+	float ticks = SDL_GetTicks() / 1000.f;
 
-			if (created != bulletCreated.end() && ticks - created->second >= 3.0) {
-				it = bullets->nodes.erase(it);
-				bulletCreated.erase(created);
+	for (auto it = bullets->nodes.begin(); it != bullets->nodes.end();) {
+		auto& [name, ptr] = *it;
+		auto created = bulletCreated.find(ptr->id);
 
-			} else if (glm::distance(ptr->transform.position, cam->position) < 1.f) {
-				it = bullets->nodes.erase(it);
-				// TODO: need to implement imp_physics::remove()
-				game->phys->remove(ptr->id);
-				std::cerr << "hit by bullet " << name << std::endl;
-				health = max(0.f, health - 0.2);
-				std::cerr << "current health: " << health << std::endl;
+		if (created != bulletCreated.end() && ticks - created->second >= 3.0) {
+			it = bullets->nodes.erase(it);
+			bulletCreated.erase(created);
 
-			} else {
-				it++;
+		} else if (glm::distance(ptr->transform.position, cam->position) < 1.f) {
+			it = bullets->nodes.erase(it);
+			// TODO: need to implement imp_physics::remove()
+			game->phys->remove(ptr->id);
+			std::cout << "hit by bullet " << name << std::endl;
+			health = max(0.f, health - 0.22);
+			std::cout << "current health: " << health << std::endl;
+
+			auto ptr = std::make_shared<stereoAudioChannel>(sounds.damage);
+			game->audio->add(ptr);
+
+		} else {
+			bool enemyHit = false;
+			for (auto en = enemies->nodes.begin();
+					en != enemies->nodes.end();)
+			{
+				auto& [ename, eptr] = *en;
+
+				if (glm::distance(eptr->transform.position + glm::vec3(0, 2, 0), ptr->transform.position) < 1.f) {
+					it = bullets->nodes.erase(it);
+					en = enemies->nodes.erase(en);
+					game->phys->remove(ptr->id);
+					enemyHit = true;
+					invalidateLightMaps(game);
+
+					auto ptr = std::make_shared<spatialAudioChannel>(sounds.hit);
+					ptr->worldPosition = eptr->transform.position;
+					game->audio->add(ptr);
+
+					break;
+
+				} else {
+					en++;
+				}
 			}
+
+			if (!enemyHit) it++;
 		}
+	}
+}
 
-		for (auto it = pickups->nodes.begin(); it != pickups->nodes.end();) {
-			auto& [name, ptr] = *it;
+void testgameView::updatePickups(gameMain *game) {
+	for (auto it = pickups->nodes.begin(); it != pickups->nodes.end();) {
+		auto& [name, ptr] = *it;
 
-			if (glm::distance(ptr->transform.position, cam->position) < 2.f) {
-				it = pickups->nodes.erase(it);
-				// TODO: need to implement imp_physics::remove()
-				game->phys->remove(ptr->id);
-				std::cerr << "picked up " << name << std::endl;
-				health = min(1.f, health + 0.2);
-				std::cerr << "current health: " << health << std::endl;
+		if (glm::distance(ptr->transform.position, cam->position) < 2.f) {
+			it = pickups->nodes.erase(it);
+			// TODO: need to implement imp_physics::remove()
+			game->phys->remove(ptr->id);
+			std::cout << "picked up " << name << std::endl;
+			health = min(1.f, health + 0.25);
+			std::cout << "current health: " << health << std::endl;
 
-			} else {
-				it++;
-			}
+			auto ptr = std::make_shared<stereoAudioChannel>(sounds.pickup);
+			game->audio->add(ptr);
+
+		} else {
+			it++;
 		}
+	}
 
-		for (auto it = keyObjs->nodes.begin(); it != keyObjs->nodes.end();) {
-			auto& [name, ptr] = *it;
+	for (auto it = keyObjs->nodes.begin(); it != keyObjs->nodes.end();) {
+		auto& [name, ptr] = *it;
 
-			if (glm::distance(ptr->transform.position, cam->position) < 2.f) {
-				it = keyObjs->nodes.erase(it);
-				// TODO: need to implement imp_physics::remove()
-				game->phys->remove(ptr->id);
-				std::cerr << "got key! " << ptr->id + 1 << std::endl;
-				keysgot |= (1 << ptr->id);
+		if (glm::distance(ptr->transform.position, cam->position) < 3.f) {
+			it = keyObjs->nodes.erase(it);
+			// TODO: need to implement imp_physics::remove()
+			game->phys->remove(ptr->id);
+			std::cout << "got key! " << ptr->id + 1 << std::endl;
+			keysgot |= (1 << ptr->id);
 
-			} else {
-				it++;
-			}
+			auto ptr = std::make_shared<stereoAudioChannel>(sounds.pickup);
+			game->audio->add(ptr);
+
+		} else {
+			it++;
 		}
 	}
 }
@@ -284,11 +383,24 @@ void testgameView::drawUIStuff(int wx, int wy) {
 		nvgFontFace(vg, "sans-bold");
 		nvgFontBlur(vg, 0);
 		nvgTextAlign(vg, NVG_ALIGN_CENTER);
-		nvgFillColor(vg, nvgRGBA(0xf0, 0x60, 0x60, 160));
-		nvgText(vg, wx/2, wy - 80 - 16*sin(4*ticks),
-		        "[space/right click] Transport", NULL);
-		nvgFillColor(vg, nvgRGBA(220, 220, 220, 160));
+
+		if (keysgot & (1 << nextLevel(current_level))) {
+			nvgFillColor(vg, nvgRGBA(0x60, 0xf0, 0x60, 224));
+			nvgText(vg, wx/2, wy - 80 - 16*sin(4*ticks),
+					"[right click] Next Level", NULL);
+		} else {
+			nvgFillColor(vg, nvgRGBA(0xf0, 0x60, 0x60, 224));
+			nvgText(vg, wx/2, wy - 80 - 16*sin(4*ticks),
+					"❎ Need key!", NULL);
+		}
+		//nvgFillColor(vg, nvgRGBA(220, 220, 220, 160));
 	}
+
+	nvgBeginPath(vg);
+	nvgRect(vg, wx/2 - 4, wy/2, 9, 1);
+	nvgRect(vg, wx/2, wy/2 - 4, 1, 9);
+	nvgFillColor(vg, nvgRGBA(16, 172, 16, 192));
+	nvgFill(vg);
 
 	nvgBeginPath(vg);
 	nvgRoundedRect(vg, 48, 35, 16, 42, 3);
@@ -296,20 +408,30 @@ void testgameView::drawUIStuff(int wx, int wy) {
 	nvgFillColor(vg, nvgRGBA(172, 16, 16, 192));
 	nvgFill(vg);
 
-	nvgRotate(vg, 0.1*cos(ticks));
+	//nvgRotate(vg, 0.1*cos(ticks));
 	nvgBeginPath(vg);
 	nvgRect(vg, 90, 44, 256, 24);
 	nvgFillColor(vg, nvgRGBA(30, 30, 30, 127));
 	nvgFill(vg);
 
 	nvgBeginPath(vg);
-	nvgRect(vg, 93, 47, 256*health, 20);
+	nvgRect(vg, 93, 47, 250*health, 16);
 	nvgFillColor(vg, nvgRGBA(192, 32, 32, 127));
 	nvgFill(vg);
 
-	nvgRotate(vg, -0.1*cos(ticks));
+	//nvgRotate(vg, 0.1*cos(ticks));
 	nvgBeginPath(vg);
-	nvgRoundedRect(vg, wx - 250, 50, 200, 16 * 18, 10);
+	nvgRect(vg, 90, 44 + 24, 256, 24);
+	nvgFillColor(vg, nvgRGBA(30, 30, 30, 127));
+	nvgFill(vg);
+
+	nvgBeginPath(vg);
+	nvgRect(vg, 93, 47 + 24, 250*ammo, 16);
+	nvgFillColor(vg, nvgRGBA(32, 32, 192, 127));
+	nvgFill(vg);
+
+	nvgBeginPath(vg);
+	nvgRoundedRect(vg, wx - 250, 50, 200, 16 * (MAX_LEVELS + 4), 10);
 	nvgFillColor(vg, nvgRGBA(28, 30, 34, 192));
 	nvgFill(vg);
 
@@ -320,13 +442,20 @@ void testgameView::drawUIStuff(int wx, int wy) {
 	nvgFillColor(vg, nvgRGBA(0xf0, 0x60, 0x60, 160));
 	nvgText(vg, wx - 82, 80, "❎", NULL);
 	nvgFillColor(vg, nvgRGBA(220, 220, 220, 160));
+
 	/*
 	nvgText(vg, wx - 235, 80, "💚 Testing this", NULL);
 	nvgText(vg, wx - 235, 80 + 16, "Go forward ➡", NULL);
 	nvgText(vg, wx - 235, 80 + 32, "⬅ Go back", NULL);
 	*/
 
-	for (unsigned i = 0; i < 16; i++) {
+	{
+		std::string txt = "Current level: " + std::to_string(current_level + 1);
+		nvgFillColor(vg, nvgRGBA(220, 220, 220, 160));
+		nvgText(vg, wx - 235, 80, txt.c_str(), NULL);
+	}
+
+	for (unsigned i = 0; i < MAX_LEVELS; i++) {
 		if (keysgot & (1 << i)) {
 			nvgFillColor(vg, nvgRGBA(0xa0, 0xe0, 0xa0, 192));
 		} else {
@@ -334,20 +463,58 @@ void testgameView::drawUIStuff(int wx, int wy) {
 		}
 
 		std::string txt = "💚 + key " + std::to_string(i+1);
-		nvgText(vg, wx - 235, 80 + i*16, txt.c_str(), NULL);
+		nvgText(vg, wx - 235, 80 + (2+i)*16, txt.c_str(), NULL);
 	}
 
 	nvgRestore(vg);
 	nvgEndFrame(vg);
 }
 
-void testgameView::drawMainMenu(int wx, int wy) {
+void testgameView::drawMainMenu(gameMain *game, int wx, int wy) {
 	int center = wx/2;
 	vgui.newFrame(wx, wy);
-	vgui.menuBegin(center - 150, 100, 300, "💚 A game !! omg");
-	if (vgui.menuEntry("Start", &menuSelect)) {
+	vgui.menuBegin(center - 150, 100, 300, "Space Marines 2020");
+
+	if (vgui.menuEntry("🔫 Start", &menuSelect)) {
 		if (vgui.clicked()) {
+			resetGame(game);
 			input.mode = modes::Move;
+
+		} else if (vgui.hovered()) {
+			menuSelect = vgui.menuCount();
+		}
+	}
+
+	vgui.menuEnd();
+	vgui.endFrame();
+}
+
+void testgameView::drawGameOver(gameMain *game, int wx, int wy) {
+	int center = wx/2;
+	vgui.newFrame(wx, wy);
+	vgui.menuBegin(center - 150, 100, 300, "LOL you died");
+	if (vgui.menuEntry("Retry", &menuSelect)) {
+		if (vgui.clicked()) {
+			//resetGame(game);
+			input.mode = modes::MainMenu;
+
+		} else if (vgui.hovered()) {
+			menuSelect = vgui.menuCount();
+		}
+	}
+
+	vgui.menuEnd();
+	vgui.endFrame();
+}
+
+void testgameView::drawWinScreen(gameMain *game, int wx, int wy) {
+	int center = wx/2;
+	vgui.newFrame(wx, wy);
+	vgui.menuBegin(center - 150, 100, 300, "You are winnar !");
+	if (vgui.menuEntry("Play again", &menuSelect)) {
+		if (vgui.clicked()) {
+			//resetGame(game);
+			input.mode = modes::MainMenu;
 
 		} else if (vgui.hovered()) {
 			menuSelect = vgui.menuCount();
@@ -361,7 +528,7 @@ void testgameView::drawMainMenu(int wx, int wy) {
 void testgameView::drawPauseMenu(int wx, int wy) {
 	int center = wx/2;
 	vgui.newFrame(wx, wy);
-	vgui.menuBegin(center - 150, 100, 300, "<Paused>");
+	vgui.menuBegin(center - 150, 100, 300, "Paused");
 	if (vgui.menuEntry("Resume", &menuSelect)) {
 		if (vgui.clicked()) {
 			input.mode = modes::Move;
@@ -392,7 +559,14 @@ void testgameView::generateEnemies(unsigned n) {
 		obj->transform.position = randomPosition();
 		obj->id = i;
 
-		setNode("model", obj, turret.first);
+		gameObject::ptr head = std::make_shared<gameObject>();
+		gameObject::ptr base = std::make_shared<gameObject>();
+
+		setNode("model", base, turret.first->getNode("scene-root[2]"));
+		setNode("model", head, turret.first->getNode("scene-root[3]"));
+
+		setNode("base", obj, base);
+		setNode("head", obj, head);
 		setNode(name, enemies, obj);
 	}
 }
@@ -409,7 +583,7 @@ void testgameView::generatePickups(unsigned n) {
 }
 
 void testgameView::generateKeys(void) {
-	unsigned next = (current_level + 1) % 16;
+	unsigned next = nextLevel(current_level);
 	std::string name = "key" + std::to_string(next);
 	gameObject::ptr obj = std::make_shared<gameObject>();
 	obj->transform.position = randomPosition() + glm::vec3(0, 1.5, 0);
@@ -418,6 +592,45 @@ void testgameView::generateKeys(void) {
 	setNode("model", obj, keyObj.first);
 	setNode(name, keyObjs, obj);
 }
+
+// XXX: workaround until smart updates are done in the renderer
+void testgameView::invalidateLightMaps(gameMain *game) {
+	for (auto& [name, ptr] : game->state->rootnode->nodes) {
+		if (ptr->type == gameObject::objType::Light) {
+			gameLight::ptr lit =
+				std::dynamic_pointer_cast<gameLight>(ptr);
+			// XXX: invalidate all shadowmaps
+			lit->have_map = false;
+		}
+	}
+
+	// reflection probes
+}
+
+void testgameView::resetGame(gameMain *game) {
+	std::cerr << "Resetti spaghetti" << std::endl;
+	current_level = 0;
+	health = ammo = 1.f;
+	keysgot = 1;
+	game->phys->set_position(cameraPhysID, glm::vec3(0, 2, 0));
+	resetLevel(game);
+}
+
+void testgameView::resetLevel(gameMain *game) {
+	for (auto [id, time] : bulletCreated) {
+		game->phys->remove(id);
+	}
+
+	invalidateLightMaps(game);
+	enemies->nodes.clear();
+	bullets->nodes.clear();
+	pickups->nodes.clear();
+
+	generateEnemies();
+	generatePickups();
+	generateKeys();
+}
+
 
 void testgameView::render(gameMain *game) {
 	int winsize_x, winsize_y;
@@ -459,11 +672,17 @@ void testgameView::render(gameMain *game) {
 
 	if (input.mode == modes::MainMenu) {
 		// TODO: function to do this
-		drawMainMenu(winsize_x, winsize_y);
+		drawMainMenu(game, winsize_x, winsize_y);
 
 	} else if (input.mode == modes::Pause) {
 		// TODO: function to do this
 		drawPauseMenu(winsize_x, winsize_y);
+
+	} else if (input.mode == modes::GameOver) {
+		drawGameOver(game, winsize_x, winsize_y);
+
+	} else if (input.mode == modes::YouWon) {
+		drawWinScreen(game, winsize_x, winsize_y);
 
 	} else {
 		// TODO: function to do this

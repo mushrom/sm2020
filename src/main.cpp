@@ -33,7 +33,8 @@ void addCameraWeapon(gameView::ptr view) {
 }
 
 int main(int argc, char *argv[]) {
-	gameMain *game = new gameMainDevWindow();
+	//gameMain *game = new gameMainDevWindow();
+	gameMain *game = new gameMainWindow();
 
 	if (argc < 2) {
 		game->state->rootnode = loadMap(game);
@@ -46,6 +47,7 @@ int main(int argc, char *argv[]) {
 	game->setView(player);
 	addCameraWeapon(player);
 
+	/*
 	auto foo = openSpatialLoop(GR_PREFIX "assets/sfx/Bit Bit Loop.ogg");
 	foo->worldPosition = glm::vec3(-10, 0, -5);
 	game->audio->add(foo);
@@ -53,8 +55,9 @@ int main(int argc, char *argv[]) {
 	auto bar = openSpatialLoop(GR_PREFIX "assets/sfx/Meditating Beat.ogg");
 	bar->worldPosition = glm::vec3(0, 0, -5);
 	game->audio->add(bar);
+	*/
 
-	auto buzz = openStereoLoop("./groovething.ogg");
+	auto buzz = openStereoLoop("./assets/groovething.ogg");
 	game->audio->add(buzz);
 
 	game->run();

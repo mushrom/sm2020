@@ -21,6 +21,8 @@ class testgameView : public gameView {
 			MainMenu,
 			Move,
 			Pause,
+			GameOver,
+			YouWon,
 		};
 
 		testgameView(gameMain *game);
@@ -50,15 +52,33 @@ class testgameView : public gameView {
 		gameModel::ptr bulletObj
 			= load_object(GR_PREFIX "assets/obj/smoothsphere.obj");
 
-		void drawMainMenu(int wx, int wy);
+		void updateEnemies(gameMain *game);
+		void updateBullets(gameMain *game);
+		void updatePickups(gameMain *game);
+
+		void drawMainMenu(gameMain *game, int wx, int wy);
 		void drawPauseMenu(int wx, int wy);
 		void drawUIStuff(int wx, int wy);
-		void generateEnemies(unsigned n = 12);
+		void drawGameOver(gameMain *game, int wx, int wy);
+		void drawWinScreen(gameMain *game, int wx, int wy);
+		void generateEnemies(unsigned n = 16);
 		void generatePickups(unsigned n = 5);
 		void generateKeys(void);
+		void invalidateLightMaps(gameMain *game);
+		void resetGame(gameMain *game);
+		void resetLevel(gameMain *game);
+
+		struct {
+			channelBuffers_ptr weapon;
+			channelBuffers_ptr pickup;
+			channelBuffers_ptr nextLevel;
+			channelBuffers_ptr damage;
+			channelBuffers_ptr hit;
+		} sounds;
 
 		double last_shots[16] = {0.0};
 		double health = 1.0;
+		double ammo = 1.0;
 		unsigned current_level = 0;
 		uint16_t keysgot = 1;
 		std::unordered_map<uint64_t, float> bulletCreated;
