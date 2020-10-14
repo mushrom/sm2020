@@ -148,19 +148,19 @@ testgameView::testgameView(gameMain *game) : gameView() {
 					float ticks = SDL_GetTicks() / 1000.f;
 
 					auto ptr = std::make_shared<spatialAudioChannel>(sounds.weapon);
-					ptr->worldPosition = cam->position + cam->direction;
+					ptr->worldPosition = cam->position() + cam->direction();
 					game->audio->add(ptr);
 
 					gameObject::ptr obj = std::make_shared<gameObject>();
-					glm::vec3 off = glm::normalize(cam->direction)*3.f;
-					obj->transform.position = cam->position;
+					glm::vec3 off = glm::normalize(cam->direction())*3.f;
+					obj->transform.position = cam->position();
 					obj->transform.scale = glm::vec3(0.5f);
 					obj->transform.position += off;
 
 					obj->id = game->phys->add_sphere(obj, obj->transform.position, 1.0, 0.5);
 
 					glm::vec3 camvel = game->phys->get_velocity(cameraPhysID);
-					game->phys->set_velocity(obj->id, glm::normalize(cam->direction)*40.f + camvel);
+					game->phys->set_velocity(obj->id, glm::normalize(cam->direction())*40.f + camvel);
 
 					bulletCreated[obj->id] = ticks;
 
@@ -186,7 +186,7 @@ testgameView::testgameView(gameMain *game) : gameView() {
 					input.setMode(modes::YouWon);
 				}
 
-				else if (glm::length(cam->position) < 10.f && (keysgot & (1 << next))) {
+				else if (glm::length(cam->position()) < 10.f && (keysgot & (1 << next))) {
 					current_level = next;
 					resetLevel(game);
 
@@ -215,14 +215,14 @@ void testgameView::logic(gameMain *game, float delta) {
 		ammo = min(1.f, ammo + delta*0.15); // 15% ammo every second 
 		health = min(1.f, health + delta*0.02); // recover 2% health every second
 
-		game->phys->set_acceleration(cameraPhysID, cam->velocity);
+		game->phys->set_acceleration(cameraPhysID, cam->velocity());
 		game->phys->step_simulation(1.f/game->frame_timer.last());
 
-		cam->position = cameraObj->transform.position + glm::vec3(0, 1.5, 0);
+		cam->setPosition(cameraObj->transform.position + glm::vec3(0, 1.5, 0));
 		cameraObj->transform.rotation = glm::quat(glm::vec3(
 					// pitch, yaw, roll
-					cam->direction.y*-0.5f,
-					atan2(cam->direction.x, cam->direction.z),
+					cam->direction().y*-0.5f,
+					atan2(cam->direction().x, cam->direction().z),
 					0));
 
 		updateEnemies(game);
@@ -235,7 +235,7 @@ void testgameView::updateEnemies(gameMain *game) {
 	float ticks = SDL_GetTicks() / 1000.f;
 
 	for (auto& [name, ptr] : enemies->nodes) {
-		glm::vec3 dir = ptr->transform.position - cam->position;
+		glm::vec3 dir = ptr->transform.position - cam->position();
 		glm::quat rot = glm::quat(glm::vec3(0, atan2(dir.x, dir.z), 0));
 		float height = min(0.5f, max(0.f, 25.f - glm::length(dir))*0.2f);
 
@@ -253,7 +253,7 @@ void testgameView::updateEnemies(gameMain *game) {
 				ptr->transform.position + glm::vec3(0, 2.f, 0);
 			obj->transform.scale = glm::vec3(0.5f);
 
-			glm::vec3 adjdir = obj->transform.position - cam->position;
+			glm::vec3 adjdir = obj->transform.position - cam->position();
 			obj->transform.position += -glm::normalize(adjdir)*3.f; 
 
 			obj->id = game->phys->add_sphere(obj, obj->transform.position, 1.0, 0.5);
@@ -283,7 +283,7 @@ void testgameView::updateBullets(gameMain *game) {
 			it = bullets->nodes.erase(it);
 			bulletCreated.erase(created);
 
-		} else if (glm::distance(ptr->transform.position, cam->position) < 1.f) {
+		} else if (glm::distance(ptr->transform.position, cam->position()) < 1.f) {
 			it = bullets->nodes.erase(it);
 			// TODO: need to implement imp_physics::remove()
 			game->phys->remove(ptr->id);
@@ -328,7 +328,7 @@ void testgameView::updatePickups(gameMain *game) {
 	for (auto it = pickups->nodes.begin(); it != pickups->nodes.end();) {
 		auto& [name, ptr] = *it;
 
-		if (glm::distance(ptr->transform.position, cam->position) < 2.f) {
+		if (glm::distance(ptr->transform.position, cam->position()) < 2.f) {
 			it = pickups->nodes.erase(it);
 			// TODO: need to implement imp_physics::remove()
 			game->phys->remove(ptr->id);
@@ -347,7 +347,7 @@ void testgameView::updatePickups(gameMain *game) {
 	for (auto it = keyObjs->nodes.begin(); it != keyObjs->nodes.end();) {
 		auto& [name, ptr] = *it;
 
-		if (glm::distance(ptr->transform.position, cam->position) < 3.f) {
+		if (glm::distance(ptr->transform.position, cam->position()) < 3.f) {
 			it = keyObjs->nodes.erase(it);
 			// TODO: need to implement imp_physics::remove()
 			game->phys->remove(ptr->id);
@@ -378,7 +378,7 @@ void testgameView::drawUIStuff(int wx, int wy) {
 
 	float ticks = SDL_GetTicks() / 1000.f;
 
-	if (glm::distance(cam->position, glm::vec3(0)) < 10.0) {
+	if (glm::distance(cam->position(), glm::vec3(0)) < 10.0) {
 		nvgFontSize(vg, 32.f);
 		nvgFontFace(vg, "sans-bold");
 		nvgFontBlur(vg, 0);
